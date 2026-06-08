@@ -1,0 +1,219 @@
+/* تنظیمات تم جدید: پس‌زمینه نیلی تیره با متن‌های روشن */
+:root {
+  --background-color: darkcyan;
+  --primary-color: #ffffff;
+
+  --secondary-color: #818cf8;
+  --accent-color: #c7d2fe;
+  --card-bg: #2e2a72;
+  --text-color: navajowhite;
+  --border-color: darkslateblue;
+  --success-color: springgreen;
+  --danger-color: darkred;
+}
+
+.btn-primary {
+  background-color: navajowhite;
+  color: white;
+  box-shadow: 0 4px 6px mediumpurple;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  line-height: 1.6;
+  direction: ltr;
+}
+
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.navbar {
+  background-color: deepskyblue;
+  color: black;
+  padding: 18px 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.navbar-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.navbar .logo {
+  font-size:36px;
+  font-weight: 1000;
+  color: darkslateblue;
+  text-decoration: none;
+  letter-spacing: 1px;
+}
+
+.navbar-links a {
+  color: #f1f2f6;
+  text-decoration: none;
+  margin-left: 20px;
+  font-weight: 500;
+  transition: all 1.5s ease !important;
+}
+
+.navbar-links a:hover {
+  color: var(--secondary-color);
+}
+
+
+.btn {
+  display: inline-block;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 1.5s ease;
+  text-decoration: none;
+  text-align: center;
+
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background-color: rebeccapurple;
+  color: white !important;
+  box-shadow: 0 4px 6px mediumpurple;
+}
+.btn-primary:hover {
+  background-color: mediumpurple;
+  color: black !important;
+  box-shadow: 0 6px 12px rebeccapurple;
+}
+
+.btn-return {
+  background-color: darkcyan;
+  color: white !important;
+  box-shadow: 0 4px 6px cyan;
+}
+.btn-return:hover {
+  background-color: cyan;
+  color: black !important;
+}
+
+.btn-warning {
+  background-color: orangered;
+  color: white !important;
+}
+.btn-warning:hover {
+  background-color: darkorange;
+  color: black !important;
+}
+
+.btn-danger {
+  background-color: darkred;
+  color: white !important;
+}
+.btn-danger:hover {
+  background-color: indianred;
+  color: black !important;
+}
+
+
+.article-card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.article-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--secondary-color);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.article-card h3 {
+  color: var(--primary-color);
+  margin-bottom: 12px;
+  font-size: 20px;
+}
+
+.article-card .summary {
+  color: #cbd5e1; /* طوسی روشن برای متن خلاصه که کاملا خوانا باشد */
+  font-size: 15px;
+  margin-bottom: 18px;
+}
+
+.article-card .meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #94a3b8;
+  border-top: 1px solid var(--border-color);
+  padding-top: 12px;
+}
+
+.article-card .meta strong {
+  color: var(--secondary-color);
+}
+
+.search-box {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 16px;
+  margin-bottom: 30px;
+  outline: none;
+  background-color: #11103b;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.search-box:focus {
+  border-color: var(--secondary-color);
+  box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.25);
+}
+
+.form-group {
+  margin-bottom: 22px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--accent-color);
+}
+
+.form-control {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 15px;
+  background-color: #11103b;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--secondary-color);
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.2);
+}
