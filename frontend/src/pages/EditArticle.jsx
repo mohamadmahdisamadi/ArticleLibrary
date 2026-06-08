@@ -86,6 +86,7 @@ export function EditArticle() {
     return (
         <>
             <TopMenu title="Update Article">
+                <NavButton text="Back to Article" to={`/article-details/${articleId}`} type="btn-return" />
                 <NavButton text="Home Page" to="/home-page" type="btn-primary" />
             </TopMenu>
 
