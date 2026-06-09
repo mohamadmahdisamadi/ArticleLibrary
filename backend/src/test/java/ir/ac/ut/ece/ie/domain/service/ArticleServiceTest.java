@@ -8,7 +8,6 @@ import ir.ac.ut.ece.ie.api.service.article.get.GetArticleTitleServiceOutput;
 import ir.ac.ut.ece.ie.api.service.article.update.UpdateArticleServiceInput;
 import ir.ac.ut.ece.ie.domain.entity.article.ArticleEntity;
 import ir.ac.ut.ece.ie.infrastructure.repository.ArticleRepository;
-import ir.ac.ut.ece.ie.infrastructure.utils.FieldComparator;
 
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,10 +19,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
@@ -41,17 +40,15 @@ class ArticleServiceTest {
 
     private ArticleEntity article1;
     private ArticleEntity article2;
-    private ArticleEntity article3;
     private final LocalDateTime fixedTime = LocalDateTime.now();
 
     @BeforeEach
     void setUp() {
-
         article1 = new ArticleEntity()
                 .setTitle("title1")
                 .setSummary("summary1")
                 .setBody("body1");
-        article1.setId("1");
+        article1.setId(1L);
         article1.setCreatedAt(fixedTime);
         article1.setLastModifiedAt(fixedTime);
 
@@ -59,284 +56,202 @@ class ArticleServiceTest {
                 .setTitle("title2")
                 .setSummary("summary2")
                 .setBody("body2");
-        article2.setId("2");
+        article2.setId(2L);
         article2.setCreatedAt(fixedTime);
         article2.setLastModifiedAt(fixedTime);
-
-        article3 = new ArticleEntity()
-                .setTitle("title3")
-                .setSummary("summary3")
-                .setBody("body3");
-        article3.setId("3");
-        article3.setCreatedAt(fixedTime);
-        article3.setLastModifiedAt(fixedTime);
     }
 
     @Nested
     @DisplayName("getArticleDetails")
     class GetArticleDetails {
-        @Test void getArticleDetails_shouldReturnDetails_whenArticleExists() throws Exception {
-            when(repository.getById("1")).thenReturn(article1);
-            when(repository.getById("2")).thenReturn(article2);
-            when(articleReferenceService.getReferences("2", false)).thenReturn(List.of("1"));
+        @Test
+        void getArticleDetails_shouldReturnDetails_whenArticleExists() throws Exception {
+            when(repository.findById(2L)).thenReturn(Optional.of(article2));
+            when(articleReferenceService.getReferencesFrom(2L)).thenReturn(List.of(article1));
 
-            GetArticleDetailsServiceOutput result = service.getArticleDetails("2");
+            GetArticleDetailsServiceOutput result = service.getArticleDetails(2L);
 
             assertNotNull(result);
-            assertEquals(
-                    new GetArticleDetailsServiceOutput(
-                        "2", "title2", "summary2", "body2",
-                        List.of(new GetArticleTitleServiceOutput("1", "title1")), fixedTime, fixedTime),
-                    result);
-            verify(repository, times(1)).getById("1");
-            verify(repository, times(1)).getById("2");
-            verify(articleReferenceService, times(1)).getReferences("2", false);
+            assertEquals(2L, result.id());
+            assertEquals("title2", result.title());
+            assertEquals(1, result.citedArticles().size());
+            assertEquals(1L, result.citedArticles().get(0).id());
+            verify(repository, times(1)).findById(2L);
         }
 
-        @Test void getArticleDetails_shouldThrowException_whenArticleNotFound() throws Exception {
-            when(repository.getById("nonexistent")).thenReturn(null);
+        @Test
+        void getArticleDetails_shouldThrowException_whenArticleNotFound() {
+            when(repository.findById(99L)).thenReturn(Optional.empty());
 
-            Exception exception = assertThrows(Exception.class, () -> service.getArticleDetails("nonexistent"));
+            Exception exception = assertThrows(Exception.class, () -> service.getArticleDetails(99L));
             assertEquals("Not found", exception.getMessage());
         }
     }
 
-
-
     @Nested
     @DisplayName("getArticlesDetails")
     class GetArticlesDetails {
-        @Test void getArticlesDetails_shouldReturnAllArticles_whenQueryIsNull() throws Exception {
-            when(repository.getAll()).thenReturn(List.of(article1, article2));
-            when(articleReferenceService.getReferences("2", false)).thenReturn(List.of("1"));
-            when(articleReferenceService.getReferences("1", false)).thenReturn(Collections.emptyList());
-            when(repository.getById("1")).thenReturn(article1);
+        @Test
+        void getArticlesDetails_shouldReturnAllArticles_whenQueryIsNull() throws Exception {
+            when(repository.findAll()).thenReturn(List.of(article1, article2));
+            when(articleReferenceService.getReferencesFrom(anyLong())).thenReturn(Collections.emptyList());
 
             List<GetArticleDetailsServiceOutput> results = service.getArticlesDetails(null);
 
             assertNotNull(results);
             assertEquals(2, results.size());
-            verify(repository, times(1)).getAll();
-            verify(repository, never()).searchField(anyString(), anyString(), any());
+            verify(repository, times(1)).findAll();
+            verify(repository, never()).findByTitleContainingIgnoreCaseOrSummaryContainingIgnoreCase(anyString(), anyString());
         }
 
         @Test
         void getArticlesDetails_shouldReturnSearchedArticles_whenQueryIsProvided() throws Exception {
-            String queryPhrase = "In the bar with the beasts";
-            when(repository.searchField("title", queryPhrase, FieldComparator.CONTAINS)).thenReturn(List.of(article1));
-            when(repository.searchField("summary", queryPhrase, FieldComparator.CONTAINS)).thenReturn(List.of());
-            when(articleReferenceService.getReferences(anyString(), anyBoolean())).thenReturn(Collections.emptyList());
+            String query = "search-term";
+            when(repository.findByTitleContainingIgnoreCaseOrSummaryContainingIgnoreCase(query, query))
+                    .thenReturn(List.of(article1));
 
-            List<GetArticleDetailsServiceOutput> results = service.getArticlesDetails(queryPhrase);
-
-            assertEquals(1, results.size());
-            assertEquals("1", results.get(0).id());
-            verify(repository, never()).getAll();
-            verify(repository, times(1)).searchField("title", queryPhrase, FieldComparator.CONTAINS);
-            verify(repository, times(1)).searchField("summary", queryPhrase, FieldComparator.CONTAINS);
-        }
-
-        @Test void getArticlesDetails_shouldReturnDistinctArticles_whenQueryMatchesMultipleFields() throws Exception {
-            String queryPhrase = "Lost in the ocean beyond the sea";
-            when(repository.searchField("title", queryPhrase, FieldComparator.CONTAINS)).thenReturn(List.of(article1));
-            when(repository.searchField("summary", queryPhrase, FieldComparator.CONTAINS)).thenReturn(List.of(article1));
-            when(articleReferenceService.getReferences(anyString(), anyBoolean())).thenReturn(Collections.emptyList());
-
-            List<GetArticleDetailsServiceOutput> results = service.getArticlesDetails(queryPhrase);
+            List<GetArticleDetailsServiceOutput> results = service.getArticlesDetails(query);
 
             assertEquals(1, results.size());
-            assertEquals("1", results.get(0).id());
+            assertEquals(1L, results.get(0).id());
+            verify(repository, never()).findAll();
         }
     }
 
+    @Nested
+    @DisplayName("getArticlesTitle")
+    class GetArticlesTitle {
+        @Test
+        void getArticlesTitle_shouldReturnTitlesAndIds() throws Exception {
+            when(repository.findAll()).thenReturn(List.of(article1, article2));
 
+            List<GetArticleTitleServiceOutput> result = service.getArticlesTitle();
+
+            assertEquals(2, result.size());
+            assertEquals(1L, result.get(0).id());
+            assertEquals("title1", result.get(0).title());
+        }
+    }
 
     @Nested
     @DisplayName("getArticlePreview")
     class GetArticlePreview {
-        @Test void getArticlePreview_callsRepository_atAllTimes() throws Exception {
-            String articleId = "1";
-            when(repository.getById(articleId)).thenReturn(article1);
-            service.getArticlePreview(articleId);
-            verify(repository, times(1)).getById(articleId);
-        }
+        @Test
+        void getArticlePreview_shouldReturnPreview_whenArticleExists() throws Exception {
+            when(repository.findById(1L)).thenReturn(Optional.of(article1));
+            when(articleReferenceService.countReferencesTo(1L)).thenReturn(5L);
+            when(articleReferenceService.countReferencesFrom(1L)).thenReturn(3L);
 
-        @Test void getArticlePreview_shouldReturnPreview_whenArticleExists() throws Exception {
-            when(repository.getById("1")).thenReturn(article1);
-            when(articleReferenceService.getReferencesCount("1", true)).thenReturn(1);
-            when(articleReferenceService.getReferencesCount("1", false)).thenReturn(1);
-
-            GetArticlePreviewServiceOutput result = service.getArticlePreview("1");
+            GetArticlePreviewServiceOutput result = service.getArticlePreview(1L);
 
             assertNotNull(result);
-            assertEquals(
-                    new GetArticlePreviewServiceOutput(
-                            "1", "title1", "summary1", 1, 1, fixedTime),
-                    result);
+            assertEquals(1L, result.id());
+            assertEquals(5L, result.citedCount());
+            assertEquals(3L, result.citingCount());
         }
 
-        @Test void getArticlePreview_shouldThrowException_whenArticleNotFound() throws Exception {
-            when(repository.getById("nonexistent")).thenReturn(null);
+        @Test
+        void getArticlePreview_shouldThrowException_whenArticleNotFound() {
+            when(repository.findById(99L)).thenReturn(Optional.empty());
 
-            Exception exception = assertThrows(Exception.class, () -> service.getArticlePreview("nonexistent"));
+            Exception exception = assertThrows(Exception.class, () -> service.getArticlePreview(99L));
             assertEquals("Not found", exception.getMessage());
         }
     }
 
-
-
     @Nested
     @DisplayName("getArticlesPreview")
     class GetArticlesPreviewList {
-        @Test void getArticlesPreview_shouldReturnAllArticlePreviews_whenQueryIsNull() throws Exception {
-            when(repository.getAll()).thenReturn(List.of(article1, article2));
-            when(articleReferenceService.getReferencesCount("1", true)).thenReturn(1);
-            when(articleReferenceService.getReferencesCount("1", false)).thenReturn(0);
-            when(articleReferenceService.getReferencesCount("2", true)).thenReturn(0);
-            when(articleReferenceService.getReferencesCount("2", false)).thenReturn(1);
+        @Test
+        void getArticlesPreview_shouldReturnAllArticlePreviews_whenQueryIsNull() throws Exception {
+            when(repository.findAll()).thenReturn(List.of(article1, article2));
+            when(articleReferenceService.countReferencesTo(anyLong())).thenReturn(0L);
+            when(articleReferenceService.countReferencesFrom(anyLong())).thenReturn(0L);
 
             List<GetArticlePreviewServiceOutput> results = service.getArticlesPreview(null);
 
             assertEquals(2, results.size());
-            verify(repository, times(1)).getAll();
-        }
-
-        @Test void getArticlesPreview_shouldReturnEmptyList_whenNoArticlesFound() throws Exception {
-            when(repository.getAll()).thenReturn(Collections.emptyList());
-            List<GetArticlePreviewServiceOutput> results = service.getArticlesPreview(null);
-            assertTrue(results.isEmpty());
+            verify(repository, times(1)).findAll();
         }
     }
 
+    @Nested
+    @DisplayName("validateArticle & Create Paths")
+    class ValidateAndCreateArticle {
+        @Test
+        void createArticle_shouldSucceed_withValidInput() throws Exception {
+            CreateArticleServiceInput input = new CreateArticleServiceInput("New Title", "New Summary", "New Body", List.of(2L));
+            when(repository.existsByTitle("New Title")).thenReturn(false);
 
-
-    @Nested @DisplayName("validateArticle")
-    class ValidateArticle {
-        @Test void validateArticle_shouldNotReturnErrorMessage_whenNothingIsWrong() throws Exception {
-            CreateArticleServiceInput input = new CreateArticleServiceInput("New Title", "New Summary", "New Body", List.of());
-            when(repository.valueExists("title", "New Title")).thenReturn(false);
             service.createArticle(input);
-            verify(repository, times(1)).add(any(ArticleEntity.class));
-            verify(articleReferenceService, times(1)).addReferences(any(), any());
+
+            verify(repository, times(1)).save(any(ArticleEntity.class));
+            verify(articleReferenceService, times(1)).addReferences(any(), eq(List.of(2L)));
         }
 
-        @Test void validateArticle_shouldReturnRelatedErrorMessage_whenTitleExists() throws Exception {
-            String articleTitle = "Maharishi";
-            CreateArticleServiceInput input = new CreateArticleServiceInput(articleTitle, "New Summary", "New Body", List.of());
-            when(repository.valueExists("title", articleTitle)).thenReturn(true);
+        @Test
+        void validateArticle_shouldReturnRelatedErrorMessage_whenTitleExists() {
+            CreateArticleServiceInput input = new CreateArticleServiceInput("title1", "Summary", "Body", List.of());
+            when(repository.existsByTitle("title1")).thenReturn(true);
 
             Exception exception = assertThrows(Exception.class, () -> service.createArticle(input));
             assertEquals("title already exists", exception.getMessage());
         }
 
-        @Test void validateArticle_shouldReturnRelatedErrorMessage_whenTitleIsEmpty() throws Exception {
-            CreateArticleServiceInput input = new CreateArticleServiceInput("", "New Summary", "New Body", List.of());
-            when(repository.valueExists("title", "")).thenReturn(false);
+        @Test
+        void validateArticle_shouldReturnRelatedErrorMessage_whenFieldsAreEmpty() {
+            CreateArticleServiceInput input = new CreateArticleServiceInput("", "", "", List.of());
 
             Exception exception = assertThrows(Exception.class, () -> service.createArticle(input));
-            assertEquals("title can't be empty", exception.getMessage());
-        }
-
-        @Test void validateArticle_shouldReturnRelatedErrorMessage_whenSummaryAndBodyAreEmpty() throws Exception {
-            CreateArticleServiceInput input = new CreateArticleServiceInput("she demon", "", "", List.of());
-            when(repository.valueExists("title", "she demon")).thenReturn(false);
-
-            Exception exception = assertThrows(Exception.class, () -> service.createArticle(input));
-            assertEquals("summary can't be empty | body can't be empty", exception.getMessage());
-        }
-
-        @Test void validateArticle_shouldReturnServerErrorMessage_whenRepositoryThrowsException() throws Exception {
-            CreateArticleServiceInput input = new CreateArticleServiceInput("she demon", "", "", List.of());
-            when(repository.valueExists("title", "she demon")).thenThrow(new Exception());
-
-            Exception exception = assertThrows(Exception.class, () -> service.createArticle(input));
-            assertEquals("server error", exception.getMessage());
-        }
-
-    }
-
-
-
-    @Nested
-    @DisplayName("createArticle")
-    class CreateArticle {
-        @Test void createArticle_shouldSucceed_withValidInput() throws Exception {
-            String articleTitle = "Maharishi";
-            String articleId = "randomId";
-            List<String> articleCitedIds = List.of("2", "3");
-            CreateArticleServiceInput input = new CreateArticleServiceInput(articleTitle, "New Summary", "New Body", articleCitedIds);
-            ArticleEntity createdArticle = new ArticleEntity()
-                    .setTitle(input.title())
-                    .setSummary(input.summary())
-                    .setBody(input.body());
-
-            when(repository.valueExists("title", articleTitle)).thenReturn(false);
-            service.createArticle(input);
-            verify(repository, times(1)).add(any(ArticleEntity.class));
-            verify(articleReferenceService, times(1)).addReferences(any(), any());
+            assertTrue(exception.getMessage().contains("title can't be empty"));
+            assertTrue(exception.getMessage().contains("summary can't be empty"));
+            assertTrue(exception.getMessage().contains("body can't be empty"));
         }
     }
 
     @Nested
     @DisplayName("updateArticle")
     class UpdateArticle {
-
-        @Test void updateArticle_shouldSucceed_withValidInput() throws Exception {
-            UpdateArticleServiceInput input = new UpdateArticleServiceInput("1", "title11", "summary11", "body", List.of());
-            when(repository.getById("1")).thenReturn(article1);
-            when(repository.valueExists("title", "title11")).thenReturn(false);
+        @Test
+        void updateArticle_shouldSucceed_withValidNewInput() throws Exception {
+            UpdateArticleServiceInput input = new UpdateArticleServiceInput(1L, "New Unique Title", "Updated Summary", "Updated Body", List.of());
+            when(repository.findById(1L)).thenReturn(Optional.of(article1));
+            when(repository.existsByTitle("New Unique Title")).thenReturn(false);
 
             service.updateArticle(input);
 
             ArgumentCaptor<ArticleEntity> articleCaptor = ArgumentCaptor.forClass(ArticleEntity.class);
-            verify(repository, times(1)).edit(articleCaptor.capture());
+            verify(repository, times(1)).save(articleCaptor.capture());
             ArticleEntity capturedArticle = articleCaptor.getValue();
-            assertEquals("1", capturedArticle.getId());
-            assertEquals("title11", capturedArticle.getTitle());
-            assertEquals("summary11", capturedArticle.getSummary());
-            verify(articleReferenceService, times(1)).updateReferences("1", List.of());
+
+            assertEquals("New Unique Title", capturedArticle.getTitle());
+            assertEquals("Updated Summary", capturedArticle.getSummary());
+            verify(articleReferenceService, times(1)).updateReferences(1L, List.of());
         }
 
-        @Test void updateArticle_withUnchangedTitle_shouldSucceed() throws Exception {
-            UpdateArticleServiceInput input = new UpdateArticleServiceInput("1", article1.getTitle(), "summary11", "body11", List.of());
-            when(repository.getById("1")).thenReturn(article1);
+        @Test
+        void updateArticle_withUnchangedTitle_shouldNotCheckTitleExistence() throws Exception {
+            UpdateArticleServiceInput input = new UpdateArticleServiceInput(1L, "title1", "Updated Summary", "Updated Body", List.of());
+            when(repository.findById(1L)).thenReturn(Optional.of(article1));
 
             service.updateArticle(input);
 
-            verify(repository, never()).valueExists(anyString(), anyString());
-            verify(repository, times(1)).edit(any(ArticleEntity.class));
-            verify(articleReferenceService, times(1)).updateReferences("1", List.of());
-        }
-
-
-        @Test
-        void updateArticle_whenArticleNotFound_shouldThrowException() throws Exception {
-            UpdateArticleServiceInput input = new UpdateArticleServiceInput("nonexistent", "T", "S", "B", Collections.emptyList());
-            when(repository.getById("nonexistent")).thenReturn(null);
-
-            Exception exception = assertThrows(Exception.class, () -> service.updateArticle(input));
-            assertEquals("Not found", exception.getMessage());
+            verify(repository, never()).existsByTitle(anyString());
+            verify(repository, times(1)).save(any(ArticleEntity.class));
         }
     }
 
-
-
     @Nested
-    @DisplayName("deleteArticle")
-    class DeleteArticle {
-        @Test void deleteArticle_shouldCallRepository_atAllTimes() throws Exception {
-            service.deleteArticle("1");
-            verify(repository, times(1)).delete("1");
-        }
-    }
-
-
-
-    @Nested
-    @DisplayName("deleteArticles")
-    class DeleteArticles {
+    @DisplayName("deleteOperations")
+    class DeleteOperations {
         @Test
-        void deleteArticles_shouldCallRepository_atAllTimes() throws Exception {
+        void deleteArticle_shouldCallRepository() throws Exception {
+            service.deleteArticle(1L);
+            verify(repository, times(1)).deleteById(1L);
+        }
+
+        @Test
+        void deleteArticles_shouldCallRepository() throws Exception {
             service.deleteArticles();
             verify(repository, times(1)).deleteAll();
         }

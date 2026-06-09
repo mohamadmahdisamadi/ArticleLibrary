@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -36,6 +37,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ArticlesController.class)
+@MockitoBean(types = JpaMetamodelMappingContext.class)
 class ArticlesControllerTest {
 
     @Autowired
@@ -171,14 +173,14 @@ class ArticlesControllerTest {
 
         @Test
         void getArticle_shouldReturnArticle_whenArticleIsFound() throws Exception {
-            String articleId = "1";
+            Long articleId = 1L;
             GetArticleDetailsServiceOutput output =
                     new GetArticleDetailsServiceOutput(
                             articleId, "Title", "Summary", "Body",
                             List.of(), fixedDateTime, fixedDateTime
                     );
 
-            Mockito.when(service.getArticleDetails("1")).thenReturn(output);
+            Mockito.when(service.getArticleDetails(1L)).thenReturn(output);
 
             MvcResult result = mockMvc.perform(get("/articles/" + articleId)).andExpect(status().isOk()).andReturn();
 
@@ -196,7 +198,7 @@ class ArticlesControllerTest {
 
         @Test
         void getArticle_shouldReturnFailure_whenCatchesException() throws Exception {
-            Mockito.when(service.getArticleDetails(any(String.class))).thenThrow(new Exception("Some server error"));
+            Mockito.when(service.getArticleDetails(any(Long.class))).thenThrow(new Exception("Some server error"));
 
             MvcResult result = mockMvc.perform(get("/articles/1")).andExpect(status().isOk()).andReturn();
 
@@ -222,7 +224,7 @@ class ArticlesControllerTest {
         void getArticles_shouldReturnArticles_whenNoException() throws Exception {
             GetArticleDetailsServiceOutput output =
                     new GetArticleDetailsServiceOutput(
-                            "1", "Title", "Summary", "Body",
+                            1L, "Title", "Summary", "Body",
                             List.of(), fixedDateTime, fixedDateTime);
             Mockito.when(service.getArticlesDetails(null)).thenReturn(Collections.nCopies(3, output));
 
@@ -268,13 +270,13 @@ class ArticlesControllerTest {
 
         @Test
         void getArticlePreview_shouldReturnArticle_whenArticleIsFound() throws Exception {
-            String articleId = "1";
+            Long articleId = 1L;
             GetArticlePreviewServiceOutput output =
                     new GetArticlePreviewServiceOutput(
                             articleId, "Title", "Summary", 1, 1, fixedDateTime
                     );
 
-            Mockito.when(service.getArticlePreview("1")).thenReturn(output);
+            Mockito.when(service.getArticlePreview(1L)).thenReturn(output);
 
             MvcResult result = mockMvc.perform(get("/articles/" + articleId + "/preview")).andExpect(status().isOk()).andReturn();
 
@@ -291,7 +293,7 @@ class ArticlesControllerTest {
 
         @Test
         void getArticlePreview_shouldReturnFailure_whenCatchesException() throws Exception {
-            Mockito.when(service.getArticlePreview(any(String.class))).thenThrow(new Exception("Some server error"));
+            Mockito.when(service.getArticlePreview(any(Long.class))).thenThrow(new Exception("Some server error"));
 
             MvcResult result = mockMvc.perform(get("/articles/1/preview")).andExpect(status().isOk()).andReturn();
 
@@ -318,7 +320,7 @@ class ArticlesControllerTest {
         void getArticlesPreview_shouldReturnArticles_whenNoException() throws Exception {
             GetArticlePreviewServiceOutput output =
                     new GetArticlePreviewServiceOutput(
-                            "1", "Title", "Summary", 1, 1, fixedDateTime);
+                            1L, "Title", "Summary", 1, 1, fixedDateTime);
 
             Mockito.when(service.getArticlesPreview(null)).thenReturn(Collections.nCopies(3, output));
 
@@ -371,7 +373,7 @@ class ArticlesControllerTest {
         void searchArticles_shouldReturnArticles_whenNoException() throws Exception {
             GetArticlePreviewServiceOutput output =
                     new GetArticlePreviewServiceOutput(
-                            "1", "Title", "Summary", 1, 1, fixedDateTime);
+                            1L, "Title", "Summary", 1, 1, fixedDateTime);
             Mockito.when(service.getArticlesPreview("RussianConeyIsland")).thenReturn(Collections.nCopies(3, output));
 
             MvcResult result = mockMvc.perform(get("/articles/search?query=RussianConeyIsland")).andExpect(status().isOk()).andReturn();
@@ -409,14 +411,14 @@ class ArticlesControllerTest {
     class DeleteArticle {
         @Test
         void deleteArticle_shouldCallService_whenIdIsProvided() throws Exception {
-            String articleId = "1";
+            Long articleId = 1L;
             mockMvc.perform(delete("/articles/" + articleId)).andExpect(status().isOk());
             verify(service).deleteArticle(articleId);
         }
 
         @Test
         void deleteArticle_shouldReturnFailure_whenCatchesException() throws Exception {
-            doThrow(new Exception("Some server error")).when(service).deleteArticle(any(String.class));
+            doThrow(new Exception("Some server error")).when(service).deleteArticle(any(Long.class));
             MvcResult result = mockMvc.perform(delete("/articles/1")).andExpect(status().isOk()).andReturn();
             String responseJson = result.getResponse().getContentAsString();
             ApiResult<Void> response = objectMapper.readValue(responseJson, new TypeReference<ApiResult<Void>>() {
@@ -427,7 +429,7 @@ class ArticlesControllerTest {
 
         @Test
         void deleteArticle_shouldReturnSuccess_whenIdIsProvided() throws Exception {
-            String articleId = "1";
+            Long articleId = 1L;
             MvcResult result = mockMvc.perform(delete("/articles/" + articleId)).andExpect(status().isOk()).andReturn();
             String responseJson = result.getResponse().getContentAsString();
             ApiResult<Void> response = objectMapper.readValue(responseJson, new TypeReference<ApiResult<Void>>() {

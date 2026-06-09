@@ -1,11 +1,10 @@
 package ir.ac.ut.ece.ie.domain.service;
 
+import ir.ac.ut.ece.ie.domain.entity.article.ArticleEntity;
 import ir.ac.ut.ece.ie.domain.entity.article.ArticleReferenceEntity;
 import ir.ac.ut.ece.ie.infrastructure.repository.ArticleReferenceRepository;
-import ir.ac.ut.ece.ie.infrastructure.utils.FieldComparator;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import ir.ac.ut.ece.ie.infrastructure.repository.ArticleRepository;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
@@ -14,8 +13,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -23,6 +23,8 @@ class ArticleReferenceServiceTest {
 
     @Mock
     private ArticleReferenceRepository repository;
+    @Mock
+    private ArticleRepository articleRepository;
 
     @InjectMocks
     private ArticleReferenceServiceImpl service;
@@ -30,110 +32,147 @@ class ArticleReferenceServiceTest {
     @Captor
     private ArgumentCaptor<List<ArticleReferenceEntity>> entityListCaptor;
 
+    private ArticleEntity article1;
+    private ArticleEntity article2;
 
+    @BeforeEach
+    void setup() {
+        article1 = new ArticleEntity();
+        article1.setId(1L);
+        article2 = new ArticleEntity();
+        article2.setId(2L);
+    }
 
-    @Nested @DisplayName("addReferences")
+    @Nested
+    @DisplayName("addReferences")
     class AddReferences {
-        @Test void addReferences_shouldAddReferencesCorrectly_attAllTimes() throws Exception {
-            String articleId = "1";
-            List<String> citedIds = List.of("2", "3");
+        @Test
+        @DisplayName("Should successfully add references when all articles exist")
+        void addReferences_shouldAddReferencesCorrectly() throws Exception {
+            List<Long> citedIds = List.of(2L);
 
-            service.addReferences(articleId, citedIds);
+            when(articleRepository.findById(article1.getId())).thenReturn(Optional.of(article1));
+            when(articleRepository.findById(article2.getId())).thenReturn(Optional.of(article2));
 
-            verify(repository).addMany(entityListCaptor.capture());
+            service.addReferences(article1.getId(), citedIds);
+
+            verify(repository).saveAll(entityListCaptor.capture());
             List<ArticleReferenceEntity> savedEntities = entityListCaptor.getValue();
 
-            assertEquals(2, savedEntities.size());
-            assertEquals(articleId, savedEntities.get(0).getCitingArticleId());
-            assertEquals("2", savedEntities.get(0).getCitedArticleId());
-            assertEquals("3", savedEntities.get(1).getCitedArticleId());
+            assertEquals(1, savedEntities.size());
+            assertEquals(article1.getId(), savedEntities.get(0).getCiting().getId());
+            assertEquals(article2.getId(), savedEntities.get(0).getCited().getId());
+        }
+
+        @Test
+        @DisplayName("Should throw exception when the citing article is not found")
+        void addReferences_shouldThrowException_whenCitingArticleNotFound() {
+            when(articleRepository.findById(1L)).thenReturn(Optional.empty());
+
+            Exception exception = assertThrows(Exception.class, () -> {
+                service.addReferences(1L, List.of(2L));
+            });
+
+            assertEquals("Article not found: 1", exception.getMessage());
+            verify(repository, never()).saveAll(anyList());
+        }
+
+        @Test
+        @DisplayName("Should throw exception when a cited article is not found")
+        void addReferences_shouldThrowException_whenCitedArticleNotFound() {
+            when(articleRepository.findById(article1.getId())).thenReturn(Optional.of(article1));
+            when(articleRepository.findById(2L)).thenReturn(Optional.empty());
+
+            Exception exception = assertThrows(Exception.class, () -> {
+                service.addReferences(article1.getId(), List.of(2L));
+            });
+
+            assertEquals("Article not found: 2", exception.getMessage());
+            verify(repository, never()).saveAll(anyList());
         }
     }
 
-
-
-    @Nested @DisplayName("updateReferences")
+    @Nested
+    @DisplayName("updateReferences")
     class UpdateReferences {
-        @Test void updateReferences_shouldDeleteOldAndAddNewReferences_atAllTime() throws Exception {
-            String articleId = "1";
-            List<String> newCitedIds = List.of("2");
+        @Test
+        @DisplayName("Should delete old references and save new references")
+        void updateReferences_shouldDeleteOldAndAddNewReferences() throws Exception {
+            Long articleId = 1L;
+            List<Long> newCitedIds = List.of(2L);
+
+            // Stubbing required for internal call to addReferences
+            when(articleRepository.findById(article1.getId())).thenReturn(Optional.of(article1));
+            when(articleRepository.findById(article2.getId())).thenReturn(Optional.of(article2));
 
             service.updateReferences(articleId, newCitedIds);
 
-            verify(repository).deleteAllHaving("citingArticleId", articleId);
-            verify(repository).addMany(entityListCaptor.capture());
+            verify(repository).deleteByCiting_Id(articleId);
+            verify(repository).saveAll(entityListCaptor.capture());
+
             List<ArticleReferenceEntity> savedEntities = entityListCaptor.getValue();
             assertEquals(1, savedEntities.size());
-            assertEquals(articleId, savedEntities.get(0).getCitingArticleId());
-            assertEquals("2", savedEntities.get(0).getCitedArticleId());
+            assertEquals(articleId, savedEntities.get(0).getCiting().getId());
+            assertEquals(2L, savedEntities.get(0).getCited().getId());
         }
     }
 
-
-
-    @Nested @DisplayName("getReferences")
+    @Nested
+    @DisplayName("getReferences")
     class GetReferences {
-        @Test void getReferences_shouldReturnIngoingReferences_whenAskedForIngoing() throws Exception {
-            String articleId = "1";
+        @Test
+        void getReferencesTo_shouldReturnReferencesTo_whenCalled() throws Exception {
             ArticleReferenceEntity entity = new ArticleReferenceEntity()
-                    .setCitingArticleId("2")
-                    .setCitedArticleId(articleId);
+                    .setCiting(article2)
+                    .setCited(article1);
 
-            when(repository.searchField("citedArticleId", articleId, FieldComparator.EXACT))
-                    .thenReturn(List.of(entity));
+            when(repository.findByCited_Id(article1.getId())).thenReturn(List.of(entity));
 
-            List<String> result = service.getReferences(articleId, true);
+            List<ArticleEntity> result = service.getReferencesTo(article1.getId());
 
             assertEquals(1, result.size());
-            assertEquals("2", result.get(0));
-            verify(repository).searchField("citedArticleId", articleId, FieldComparator.EXACT);
+            assertEquals(article2.getId(), result.get(0).getId());
+            verify(repository).findByCited_Id(article1.getId());
         }
 
-        @Test void getReferences_shouldReturnOutgoingReferences_whenAskedForOutgoing() throws Exception {
-            String articleId = "1";
+        @Test
+        void getReferencesFrom_shouldReturnReferencesFrom_whenCalled() throws Exception {
             ArticleReferenceEntity entity = new ArticleReferenceEntity()
-                    .setCitingArticleId(articleId)
-                    .setCitedArticleId("2");
+                    .setCiting(article1)
+                    .setCited(article2);
 
-            when(repository.searchField("citingArticleId", articleId, FieldComparator.EXACT))
-                    .thenReturn(List.of(entity));
+            when(repository.findByCiting_Id(article1.getId())).thenReturn(List.of(entity));
 
-            List<String> result = service.getReferences(articleId, false);
+            List<ArticleEntity> result = service.getReferencesFrom(article1.getId());
 
             assertEquals(1, result.size());
-            assertEquals("2", result.get(0));
-            verify(repository).searchField("citingArticleId", articleId, FieldComparator.EXACT);
+            assertEquals(article2.getId(), result.get(0).getId());
+            verify(repository).findByCiting_Id(article1.getId());
         }
     }
 
+    @Nested
+    @DisplayName("countReferences")
+    class CountReferences {
+        @Test
+        @DisplayName("Should correctly count references originating from an article")
+        void countReferencesFrom_shouldReturnCorrectSize() throws Exception {
+            ArticleReferenceEntity entity = new ArticleReferenceEntity().setCiting(article1).setCited(article2);
+            when(repository.findByCiting_Id(article1.getId())).thenReturn(List.of(entity));
 
+            long count = service.countReferencesFrom(article1.getId());
 
-    @Nested @DisplayName("getReferencesCount")
-    class GetReferencesCount {
-        @Test void getReferenceCount_shouldCallRepository_atAllTime() throws Exception {
-            when(repository.searchField("citingArticleId", "1", FieldComparator.EXACT))
-                    .thenReturn(List.of(new ArticleReferenceEntity()));
-            service.getReferencesCount("1", false);
-            verify(repository, times(1)).searchField(anyString(), eq("1"), any());
+            assertEquals(1, count);
         }
 
-        @Test void getReferencesCount_shouldReturnIngoingReferencesCount_whenAskedForIngoing() throws Exception {
-            String articleId = "1";
+        @Test
+        @DisplayName("Should correctly count references pointing to an article")
+        void countReferencesTo_shouldReturnCorrectSize() throws Exception {
+            ArticleReferenceEntity entity = new ArticleReferenceEntity().setCiting(article2).setCited(article1);
+            when(repository.findByCited_Id(article1.getId())).thenReturn(List.of(entity));
 
-            when(repository.searchField("citedArticleId", articleId, FieldComparator.EXACT))
-                    .thenReturn(List.of(new ArticleReferenceEntity(), new ArticleReferenceEntity()));
+            long count = service.countReferencesTo(article1.getId());
 
-            int count = service.getReferencesCount(articleId, true);
-            assertEquals(2, count);
-        }
-
-        @Test void getReferencesCount_shouldReturnOutgoingReferencesCount_whenAskedForOutgoing() throws Exception {
-            String articleId = "1";
-
-            when(repository.searchField("citingArticleId", articleId, FieldComparator.EXACT))
-                    .thenReturn(List.of(new ArticleReferenceEntity()));
-
-            int count = service.getReferencesCount(articleId, false);
             assertEquals(1, count);
         }
     }
