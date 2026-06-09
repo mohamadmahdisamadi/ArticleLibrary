@@ -58,7 +58,11 @@ export function Home() {
                 {loading ? (
                     <p style={{ color: 'var(--accent-color)' }}>Loading articles...</p>
                 ) : articles.length === 0 ? (
-                    <p style={{ color: "darkred" }}>No articles found, try again.</p>
+                        searchQuery.length === 0 ? (
+                            <p style={{ color: "darkred" }}>No articles yet, publish the first one!</p>
+                        ) : (
+                            <p style={{ color: "darkred" }}>No articles found, try a different query.</p>
+                        )
                 ) : (
                     <div>
                         {articles.map((article) => (
