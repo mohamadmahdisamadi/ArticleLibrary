@@ -20,7 +20,7 @@ export const articleService = {
     getOtherArticlesTitle: async (articleId) => {
         const response = await apiCaller.get('/articles/title');
         const data = handleDataResponse(response);
-        return data.filter(article => article.id !== articleId);
+        return data.filter(article => article.id !== Number(articleId));
     },
 
 

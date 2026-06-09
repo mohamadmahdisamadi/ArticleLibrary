@@ -79,7 +79,7 @@ export function EditArticle() {
             navigate(`/article-details/${articleId}`);
         } catch (e) {
             console.error("Error updating article:", e);
-            alert("Failed to update the article. Please try again.");
+            alert("Error updating article: " + e.message);
         }
     }
 
