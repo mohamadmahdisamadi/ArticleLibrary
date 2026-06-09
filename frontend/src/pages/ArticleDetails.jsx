@@ -84,7 +84,7 @@ export function ArticleDetails() {
                                 return (
                                     <span key={citedArticle.id}>
                                         <Link
-                                            to={`/article/${citedArticle.id}`}
+                                            to={`/article-details/${citedArticle.id}`}
                                             style={{ fontStyle: 'italic', color: 'rebeccapurple', textDecoration: 'none', fontWeight: '500' }}
                                         >
                                             {citedArticle.title}

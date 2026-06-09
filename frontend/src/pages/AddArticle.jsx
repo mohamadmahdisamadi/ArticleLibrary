@@ -56,7 +56,7 @@ export function AddArticle() {
             navigate('/home-page');
         } catch (e) {
             console.error("Error creating article:", e);
-            alert("Failed to publish the article. Please try again.");
+            alert("Error creating article: " + e.message);
         }
     }
 
