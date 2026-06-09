@@ -11,5 +11,5 @@ import java.util.List;
 public interface ArticleReferenceRepository extends JpaRepository<ArticleReferenceEntity, Long> {
     List<ArticleReferenceEntity> findByCiting_Id(Long citingId);
     List<ArticleReferenceEntity> findByCited_Id(Long citedId);
-    void deleteByCiting_Id(Long citingId);
+    @Transactional void deleteByCiting_Id(Long citingId);
 }
