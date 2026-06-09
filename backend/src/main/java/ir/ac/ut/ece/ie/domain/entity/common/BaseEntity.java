@@ -1,19 +1,30 @@
 package ir.ac.ut.ece.ie.domain.entity.common;
 
 import java.time.LocalDateTime;
+import jakarta.persistence.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+@MappedSuperclass @EntityListeners(AuditingEntityListener.class)
 public abstract class BaseEntity {
-    private String id;
+
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @LastModifiedDate @Column(name = "last_modified_at", nullable = false)
     private LocalDateTime lastModifiedAt;
 
     public BaseEntity() {}
 
-    public boolean passesQueryFilter() { return true; }
 
-    public String getId() { return id; }
+    public Long getId() { return id; }
 
-    public void setId(String id) { this.id = id; }
+    public void setId(Long id) { this.id = id; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public void setLastModifiedAt(LocalDateTime lastModifiedAt) { this.lastModifiedAt = lastModifiedAt; }
 

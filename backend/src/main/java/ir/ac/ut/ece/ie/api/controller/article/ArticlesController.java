@@ -40,7 +40,7 @@ public class ArticlesController {
 	}
 
 	@PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-	public ApiResult<Void> updateArticle(@PathVariable("id") String id, @RequestBody UpdateArticleRequest request) {
+	public ApiResult<Void> updateArticle(@PathVariable("id") Long id, @RequestBody UpdateArticleRequest request) {
 		try {
 			UpdateArticleServiceInput serviceInput = new UpdateArticleServiceInput(
 					id, request.title(), request.summary(), request.body(), request.citedArticleIds());
@@ -70,7 +70,7 @@ public class ArticlesController {
 	}
 
 	@GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-	public ApiResult<GetArticleResponse> getArticle(@PathVariable("id") String id) {
+	public ApiResult<GetArticleResponse> getArticle(@PathVariable("id") Long id) {
 		try {
 			GetArticleDetailsServiceOutput article = service.getArticleDetails(id);
 
@@ -99,7 +99,7 @@ public class ArticlesController {
 	}
 
 	@GetMapping(value = "/{id}/preview", produces = MediaType.APPLICATION_JSON_VALUE)
-	public ApiResult<GetArticlePreviewResponse> getArticlePreview(@PathVariable("id") String id) {
+	public ApiResult<GetArticlePreviewResponse> getArticlePreview(@PathVariable("id") Long id) {
 		try {
 			GetArticlePreviewServiceOutput article = service.getArticlePreview(id);
 
@@ -149,7 +149,7 @@ public class ArticlesController {
 	}
 
 	@DeleteMapping(value = "/{id}",	produces = MediaType.APPLICATION_JSON_VALUE)
-	public ApiResult<Void> deleteArticle(@PathVariable("id") String id) {
+	public ApiResult<Void> deleteArticle(@PathVariable("id") Long id) {
 		try {
 			service.deleteArticle(id);
 			return ApiResult.success();

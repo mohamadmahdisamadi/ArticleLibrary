@@ -13,12 +13,12 @@ public interface ArticleService {
     public List<GetArticlePreviewServiceOutput> getArticlesPreview(String query) throws Exception;
     public List<GetArticleTitleServiceOutput> getArticlesTitle() throws Exception;
 
-    public GetArticleDetailsServiceOutput getArticleDetails(String id) throws Exception;
-    public GetArticlePreviewServiceOutput getArticlePreview(String id) throws Exception;
+    public GetArticleDetailsServiceOutput getArticleDetails(Long id) throws Exception;
+    public GetArticlePreviewServiceOutput getArticlePreview(Long id) throws Exception;
 
     public void createArticle(CreateArticleServiceInput request) throws Exception;
     public void updateArticle(UpdateArticleServiceInput request) throws Exception;
 
-    public void deleteArticle(String id) throws Exception;
+    public void deleteArticle(Long id) throws Exception;
     public void deleteArticles() throws Exception;
 }

@@ -9,7 +9,6 @@ import ir.ac.ut.ece.ie.api.service.article.get.GetArticleTitleServiceOutput;
 import ir.ac.ut.ece.ie.api.service.article.update.UpdateArticleServiceInput;
 import ir.ac.ut.ece.ie.domain.entity.article.ArticleEntity;
 import ir.ac.ut.ece.ie.infrastructure.repository.ArticleRepository;
-import ir.ac.ut.ece.ie.infrastructure.utils.FieldComparator;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,7 +25,7 @@ public class ArticleServiceImpl implements ArticleService {
     private ArticleReferenceService articleReferenceService;
 
     public List<GetArticleDetailsServiceOutput> getArticlesDetails(String query) throws Exception {
-        List<ArticleEntity> articles = (query == null) ? repository.getAll() : searchArticles(query);
+        List<ArticleEntity> articles = (query == null) ? repository.findAll() : searchArticles(query);
         List<GetArticleDetailsServiceOutput> output = new ArrayList<>();
         for (ArticleEntity article : articles)
             output.add(getArticleDetails(article));
@@ -34,7 +33,7 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     public List<GetArticlePreviewServiceOutput> getArticlesPreview(String query) throws Exception {
-        List<ArticleEntity> articles = (query == null) ? repository.getAll() : searchArticles(query);
+        List<ArticleEntity> articles = (query == null) ? repository.findAll() : searchArticles(query);
         List<GetArticlePreviewServiceOutput> output = new ArrayList<>();
         for (ArticleEntity article : articles)
             output.add(getArticlePreview(article));
@@ -43,21 +42,19 @@ public class ArticleServiceImpl implements ArticleService {
 
     @Override
     public List<GetArticleTitleServiceOutput> getArticlesTitle() throws Exception {
-        return repository.getAll().stream()
+        return repository.findAll().stream()
                 .map(a -> new GetArticleTitleServiceOutput(a.getId(), a.getTitle())).toList();
     }
 
-    public GetArticleDetailsServiceOutput getArticleDetails(String id) throws Exception {
-        ArticleEntity article = repository.getById(id);
-        if (article == null)
-            throw new Exception("Not found");
+    public GetArticleDetailsServiceOutput getArticleDetails(Long id) throws Exception {
+        ArticleEntity article = repository.findById(id)
+                .orElseThrow(() -> new Exception("Not found"));
         return getArticleDetails(article);
     }
 
-    public GetArticlePreviewServiceOutput getArticlePreview(String id) throws Exception {
-        ArticleEntity article = repository.getById(id);
-        if (article == null)
-            throw new Exception("Not found");
+    public GetArticlePreviewServiceOutput getArticlePreview(Long id) throws Exception {
+        ArticleEntity article = repository.findById(id)
+                .orElseThrow(() -> new Exception("Not found"));
         return getArticlePreview(article);
     }
 
@@ -71,14 +68,13 @@ public class ArticleServiceImpl implements ArticleService {
                 .setSummary(request.summary())
                 .setBody(request.body());
 
-        repository.add(article);
+        repository.save(article);
         articleReferenceService.addReferences(article.getId(), request.citedArticleIds());
     }
 
     public void updateArticle(UpdateArticleServiceInput request) throws Exception {
-         ArticleEntity article = repository.getById(request.id());
-        if (article == null)
-            throw new Exception("Not found");
+         ArticleEntity article = repository.findById(request.id())
+                 .orElseThrow(() -> new Exception("Not found"));
 
         String oldTitle = article.getTitle();
 
@@ -92,47 +88,36 @@ public class ArticleServiceImpl implements ArticleService {
                 .setSummary(request.summary())
                 .setBody(request.body());
 
-        repository.edit(article);
+        repository.save(article);
         articleReferenceService.updateReferences(article.getId(), request.citedArticleIds());
     }
 
-    public void deleteArticle(String id) throws Exception { repository.delete(id); }
+    public void deleteArticle(Long id) throws Exception { repository.deleteById(id); }
 
     public void deleteArticles() throws Exception { repository.deleteAll(); }
 
     private List<ArticleEntity> searchArticles(String query) throws Exception {
-        List<ArticleEntity> searchResult = new ArrayList<>();
-        searchResult.addAll(repository.searchField("title", query, FieldComparator.CONTAINS));
-        searchResult.addAll(repository.searchField("summary", query, FieldComparator.CONTAINS));
-
-        List<ArticleEntity> distinctSearchResult = new ArrayList<>();
-        for (ArticleEntity article : searchResult)
-            if (distinctSearchResult.stream().noneMatch(a -> a.getId().equals(article.getId())))
-                distinctSearchResult.add(article);
-
-        return distinctSearchResult;
+        return repository.findByTitleContainingIgnoreCaseOrSummaryContainingIgnoreCase(query, query);
     }
 
-
     private GetArticleDetailsServiceOutput getArticleDetails(ArticleEntity article) throws Exception {
-        List<String> referenceArticleIds = articleReferenceService.getReferences(article.getId(), false);
-        List<GetArticleTitleServiceOutput> citedArticles = new ArrayList<>();
+        List<ArticleEntity> citedArticles = articleReferenceService.getReferencesFrom(article.getId());
 
-        for (String referenceArticleId : referenceArticleIds) {
-            citedArticles.add(new GetArticleTitleServiceOutput(
-                    referenceArticleId, repository.getById(referenceArticleId).getTitle()));
-        }
+        List<GetArticleTitleServiceOutput> citedArticleTitles = citedArticles.stream()
+                .map(citedArticle -> new GetArticleTitleServiceOutput(
+                        citedArticle.getId(), citedArticle.getTitle()
+                )).toList();
 
         return new GetArticleDetailsServiceOutput(
                 article.getId(), article.getTitle(), article.getSummary(), article.getBody(),
-                citedArticles, article.getCreatedAt(), article.getLastModifiedAt());
+                citedArticleTitles, article.getCreatedAt(), article.getLastModifiedAt());
     }
 
     private GetArticlePreviewServiceOutput getArticlePreview(ArticleEntity article) throws Exception {
         return new GetArticlePreviewServiceOutput(
                 article.getId(), article.getTitle(), article.getSummary(),
-                articleReferenceService.getReferencesCount(article.getId(), true),
-                articleReferenceService.getReferencesCount(article.getId(), false),
+                articleReferenceService.countReferencesTo(article.getId()),
+                articleReferenceService.countReferencesFrom(article.getId()),
                 article.getCreatedAt()
         );
     }
@@ -149,9 +134,8 @@ public class ArticleServiceImpl implements ArticleService {
             if (body == null || body.isEmpty())
                 message += ((!message.isEmpty()) ? " | " : "") + "body can't be empty";
 
-            if (checkTitleExistence && repository.valueExists("title", title))
+            if (checkTitleExistence && repository.existsByTitle(title))
                 message += ((!message.isEmpty()) ? " | " : "") + "title already exists";
-
 
             return message;
         } catch (Exception e) {
